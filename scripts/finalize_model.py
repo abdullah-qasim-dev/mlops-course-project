@@ -15,16 +15,17 @@ from sklearn.pipeline import Pipeline
 from src.data.validation import validate_data
 from src.data.preprocessing import create_preprocessor
 from src.features.build_features import build_features
+from src.models.config import BEST_MODEL_PARAMETERS, RANDOM_STATE
 from src.models.evaluate import evaluate_model
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+
 RAW_DATA_PATH = ROOT_DIR / "data" / "raw" / "ai4i2020.csv"
 TRACKING_DIR = ROOT_DIR / "mlruns"
 MODEL_DIR = ROOT_DIR / "models"
 
 EXPERIMENT_NAME = "AI4I Predictive Maintenance"
-RANDOM_STATE = 42
 TEST_SIZE = 0.2
 
 
@@ -35,6 +36,7 @@ def main() -> None:
     data = pd.read_csv(RAW_DATA_PATH)
     validate_data(data)
 
+    # Separate input features and target.
     X, y = build_features(data)
 
     # Split data into training and testing sets.
@@ -46,31 +48,19 @@ def main() -> None:
         stratify=y,
     )
 
-    # Create the final preprocessing and model pipeline.
+    # Create preprocessing and Random Forest pipeline.
     final_model = Pipeline([
         ("preprocessor", create_preprocessor()),
         (
             "classifier",
-            RandomForestClassifier(
-                n_estimators=400,
-                min_samples_split=5,
-                min_samples_leaf=1,
-                max_samples=0.7,
-                max_features=None,
-                max_depth=20,
-                criterion="log_loss",
-                class_weight={0: 1, 1: 5},
-                bootstrap=True,
-                random_state=RANDOM_STATE,
-                n_jobs=2,
-            ),
+            RandomForestClassifier(**BEST_MODEL_PARAMETERS),
         ),
     ])
 
     # Train using the complete training set.
     final_model.fit(X_train, y_train)
 
-    # Evaluate only once on the untouched test set.
+    # Evaluate on the untouched test set.
     test_metrics, test_matrix = evaluate_model(
         final_model,
         X_test,
@@ -83,14 +73,15 @@ def main() -> None:
     print("\nFinal test confusion matrix:")
     print(test_matrix)
 
-    # Save the final model locally.
+    # Save the trained model.
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     model_path = MODEL_DIR / "final_random_forest.joblib"
     joblib.dump(final_model, model_path)
 
-    # Configure MLflow.
+    # Configure MLflow tracking.
     TRACKING_DIR.mkdir(parents=True, exist_ok=True)
+
     tracking_database = TRACKING_DIR / "mlflow.db"
 
     mlflow.set_tracking_uri(
@@ -98,21 +89,10 @@ def main() -> None:
     )
     mlflow.set_experiment(EXPERIMENT_NAME)
 
-    # Log final model and test results in MLflow.
+    # Log final model and test results.
     with mlflow.start_run(run_name="final_random_forest"):
 
-        mlflow.log_params({
-            "n_estimators": 400,
-            "min_samples_split": 5,
-            "min_samples_leaf": 1,
-            "max_samples": 0.7,
-            "max_features": "None",
-            "max_depth": 20,
-            "criterion": "log_loss",
-            "class_weight": "{0: 1, 1: 5}",
-            "bootstrap": True,
-            "random_state": RANDOM_STATE,
-        })
+        mlflow.log_params(BEST_MODEL_PARAMETERS)
 
         mlflow.log_metrics({
             f"test_{name}": value
