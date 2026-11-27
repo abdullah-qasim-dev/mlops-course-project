@@ -5,6 +5,7 @@ ucimlrepo
 dvc
 mlflow
 flask
+flasgger
 joblib
 pyyaml
 pytest
