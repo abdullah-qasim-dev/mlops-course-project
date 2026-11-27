@@ -11,16 +11,17 @@ from sklearn.model_selection import train_test_split
 
 from src.data.validation import validate_data
 from src.features.build_features import build_features
+from src.models.config import RANDOM_STATE
 from src.models.evaluate import evaluate_model
 from src.models.tune import create_tuning_search
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+
 RAW_DATA_PATH = ROOT_DIR / "data" / "raw" / "ai4i2020.csv"
 TRACKING_DIR = ROOT_DIR / "mlruns"
 
 EXPERIMENT_NAME = "AI4I Predictive Maintenance"
-RANDOM_STATE = 42
 TEST_SIZE = 0.2
 VALIDATION_SIZE = 0.2
 
@@ -35,7 +36,7 @@ def main() -> None:
     X, y = build_features(data)
 
     # Keep the test set separate for final evaluation.
-    X_train, X_test, y_train, y_test = train_test_split(
+    X_train, _X_test, y_train, _y_test = train_test_split(
         X,
         y,
         test_size=TEST_SIZE,
@@ -43,7 +44,7 @@ def main() -> None:
         stratify=y,
     )
 
-    # Create fitting and validation sets.
+    # Split the training data into fitting and validation sets.
     X_fit, X_validation, y_fit, y_validation = train_test_split(
         X_train,
         y_train,
@@ -52,8 +53,9 @@ def main() -> None:
         stratify=y_train,
     )
 
-    # Configure MLflow.
+    # Configure MLflow tracking.
     TRACKING_DIR.mkdir(parents=True, exist_ok=True)
+
     tracking_database = TRACKING_DIR / "mlflow.db"
 
     mlflow.set_tracking_uri(
@@ -61,7 +63,7 @@ def main() -> None:
     )
     mlflow.set_experiment(EXPERIMENT_NAME)
 
-    # Perform hyperparameter tuning.
+    # Perform hyperparameter tuning using cross-validation.
     search = create_tuning_search()
     search.fit(X_fit, y_fit)
 
@@ -103,12 +105,10 @@ def main() -> None:
             search.best_score_,
         )
 
-        mlflow.log_metrics(
-            {
-                f"validation_{name}": value
-                for name, value in validation_metrics.items()
-            }
-        )
+        mlflow.log_metrics({
+            f"validation_{name}": value
+            for name, value in validation_metrics.items()
+        })
 
         mlflow.log_dict(
             {
@@ -120,7 +120,6 @@ def main() -> None:
 
         # Save all cross-validation results.
         with TemporaryDirectory() as temporary_directory:
-
             results_path = (
                 Path(temporary_directory) / "tuning_results.csv"
             )

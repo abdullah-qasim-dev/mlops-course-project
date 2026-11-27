@@ -6,9 +6,9 @@ from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 
 from src.data.preprocessing import create_preprocessor
+from src.models.config import RANDOM_STATE
 
 
-RANDOM_STATE = 42
 TUNING_ITERATIONS = 40
 CV_FOLDS = 5
 
