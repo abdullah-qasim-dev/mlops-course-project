@@ -20,13 +20,14 @@ NUMERICAL_FEATURES = [
 
 FAILURE_MODE_COLUMNS = ["TWF", "HDF", "PWF", "OSF", "RNF"]
 
-IDENTIFIER_COLUMNS = ["UDI", "Product ID"]
+# The supplied AI4I 2020 CSV does not contain identifier columns.
+# Keep this constant for compatibility with the existing pipeline.
+IDENTIFIER_COLUMNS: list[str] = []
 
 MODEL_FEATURE_COLUMNS = CATEGORICAL_FEATURES + NUMERICAL_FEATURES
 
 REQUIRED_COLUMNS = (
-    IDENTIFIER_COLUMNS
-    + MODEL_FEATURE_COLUMNS
+    MODEL_FEATURE_COLUMNS
     + [TARGET_COLUMN]
     + FAILURE_MODE_COLUMNS
 )

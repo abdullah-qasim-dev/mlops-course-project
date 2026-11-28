@@ -9,36 +9,37 @@ from src.data.validation import REQUIRED_COLUMNS, validate_data
 
 @pytest.fixture
 def valid_data():
-    """Create a small valid dataset for testing."""
+    """Create a small valid row using the actual AI4I 2020 CSV schema."""
 
-    return pd.DataFrame([
-        {
-            "UDI": 1,
-            "Product ID": "M14860",
-            "Type": "M",
-            "Air temperature": 300.0,
-            "Process temperature": 310.0,
-            "Rotational speed": 1500,
-            "Torque": 40.0,
-            "Tool wear": 100,
-            "Machine failure": 0,
-            "TWF": 0,
-            "HDF": 0,
-            "PWF": 0,
-            "OSF": 0,
-            "RNF": 0,
-        }
-    ], columns=REQUIRED_COLUMNS)
+    return pd.DataFrame(
+        [
+            {
+                "Type": "M",
+                "Air temperature": 300.0,
+                "Process temperature": 310.0,
+                "Rotational speed": 1500,
+                "Torque": 40.0,
+                "Tool wear": 100,
+                "Machine failure": 0,
+                "TWF": 0,
+                "HDF": 0,
+                "PWF": 0,
+                "OSF": 0,
+                "RNF": 0,
+            }
+        ],
+        columns=REQUIRED_COLUMNS,
+    )
 
 
 def test_valid_data(valid_data):
-    """Valid dataset should pass validation."""
+    """Valid data using the real source schema should pass validation."""
 
     validate_data(valid_data)
 
 
 def test_missing_columns(valid_data):
-    """Dataset with missing columns should be rejected."""
+    """Dataset with a missing required feature should be rejected."""
 
     invalid_data = valid_data.drop(columns=["Torque"])
 
@@ -104,6 +105,26 @@ def test_invalid_target_values(valid_data):
     invalid_data.loc[0, "Machine failure"] = 2
 
     with pytest.raises(ValueError, match="only 0 or 1"):
+        validate_data(invalid_data)
+
+
+def test_invalid_failure_mode_values(valid_data):
+    """Failure-mode columns should contain only 0 or 1."""
+
+    invalid_data = valid_data.copy()
+    invalid_data.loc[0, "TWF"] = 2
+
+    with pytest.raises(ValueError, match="only 0 or 1"):
+        validate_data(invalid_data)
+
+
+def test_non_numeric_sensor_values(valid_data):
+    """Sensor measurements should be numeric."""
+
+    invalid_data = valid_data.copy()
+    invalid_data["Torque"] = "forty"
+
+    with pytest.raises(TypeError, match="Expected numeric values"):
         validate_data(invalid_data)
 
 
