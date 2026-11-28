@@ -11,3 +11,5 @@ pyyaml
 pytest
 matplotlib
 seaborn
+feast==0.68.0
+pyarrow
